@@ -17,6 +17,13 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      # Debugging wegen Docker
+      - name: Check user in workflow
+        run: id
+        
+      - name: Docker Info
+        run: docker info
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
