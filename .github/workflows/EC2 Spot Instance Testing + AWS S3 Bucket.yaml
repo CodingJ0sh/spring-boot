@@ -1,5 +1,9 @@
 name: EC2 Spot Instance Testing + AWS S3 Bucket
 
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+
 on:
   push:
     branches: [ "main" ]
