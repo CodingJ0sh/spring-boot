@@ -43,28 +43,3 @@ jobs:
           aws s3 cp spring-boot-project/spring-boot-actuator/build/test-results/test \
             s3://my-ec2-spot-log-bucket/actuator/ --recursive
 
-      # ========================================================
-      # =============== Subprojekt 2: actuator-autoconfigure ===
-      # ========================================================
-      - name: Build & Test Actuator-Autoconfigure
-        run: |
-          ./gradlew :spring-boot-project:spring-boot-actuator-autoconfigure:clean \
-                     :spring-boot-project:spring-boot-actuator-autoconfigure:build
-
-      - name: Upload Actuator-Autoconfigure Test Results to S3
-        run: |
-          aws s3 cp spring-boot-project/spring-boot-actuator-autoconfigure/build/test-results/test \
-            s3://my-ec2-spot-log-bucket/actuator-autoconfigure/ --recursive
-
-      # ========================================================
-      # =============== Subprojekt 3: spring-boot-autoconfigure =
-      # ========================================================
-      - name: Build & Test Autoconfigure
-        run: |
-          ./gradlew :spring-boot-project:spring-boot-autoconfigure:clean \
-                     :spring-boot-project:spring-boot-autoconfigure:build
-
-      - name: Upload Autoconfigure Test Results
-        run: |
-          aws s3 cp spring-boot-project/spring-boot-autoconfigure/build/test-results/test \
-            s3://my-ec2-spot-log-bucket/autoconfigure/ --recursive
