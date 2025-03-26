@@ -4,6 +4,11 @@ import xml.etree.ElementTree as ET
 import json
 from collections import OrderedDict, defaultdict
 
+MODULE_TO_BATCH = {
+    "spring-boot-actuator": "actuator",
+    "spring-boot-autoconfigure": "autoconfigure"
+}
+
 RESULTS_DIRS = {
     "spring-boot-actuator": "spring-boot-project/spring-boot-actuator/build/test-results/test",
     "spring-boot-autoconfigure": "spring-boot-project/spring-boot-autoconfigure/build/test-results/test"
@@ -14,19 +19,14 @@ OUTPUT_EXECUTED = "executed-classes.json"
 ALL_TESTS_FILE = "all-tests.json"
 
 summary = {}
-executed_classes = defaultdict(set)  
-executed_tests = defaultdict(set)   
+executed_classes = defaultdict(set)
 
 def init_module(module):
     if module not in summary:
-        summary[module] = {
-            "BESTANDEN": {},
-            "GEFAILED": {},
-            "GESKIPPED": {},
-        }
+        summary[module] = { "BESTANDEN": {} }
 
-def add_test(module, result_type, classname, testname):
-    summary[module][result_type].setdefault(classname, []).append(testname)
+def add_test(module, classname, testname):
+    summary[module]["BESTANDEN"].setdefault(classname, []).append(testname)
 
 for module, path in RESULTS_DIRS.items():
     if not os.path.exists(path):
@@ -44,33 +44,23 @@ for module, path in RESULTS_DIRS.items():
         for case in root.findall(".//testcase"):
             classname = case.attrib.get("classname")
             testname = re.sub(r"\(\)$", "", case.attrib.get("name"))
-            full = f"{classname}.{testname}"
-
-            executed_tests[module].add(full)
             executed_classes[module].add(classname)
+            add_test(module, classname, testname)
 
-            if case.find("failure") is not None:
-                add_test(module, "GEFAILED", classname, testname)
-            elif case.find("skipped") is not None:
-                add_test(module, "GESKIPPED", classname, testname)
-            else:
-                add_test(module, "BESTANDEN", classname, testname)
-
+# all-tests.json laden
 with open(ALL_TESTS_FILE) as f:
     all_tests = json.load(f)
 
 # Übersicht erzeugen
 overview = {}
 for module in summary:
+    batch = MODULE_TO_BATCH.get(module, module)
     overview[module] = {
-        "TESTKLASSEN_GESAMT": len(all_tests.get(module, {})),
-        "TESTS_GESAMT": sum(len(v) for v in all_tests.get(module, {}).values()),
-        "BESTANDEN": sum(len(v) for v in summary[module]["BESTANDEN"].values()),
-        "GEFAILED": sum(len(v) for v in summary[module]["GEFAILED"].values()),
-        "GESKIPPED": sum(len(v) for v in summary[module]["GESKIPPED"].values()),
+        "TESTKLASSEN_GESAMT": len(all_tests.get(batch, {})),
+        "BESTANDEN": sum(len(v) for v in summary[module]["BESTANDEN"].values())
     }
 
-# JSON-Ausgaben schreiben
+# Speichern
 ordered_summary = OrderedDict()
 ordered_summary["Overview"] = overview
 for module in sorted(summary.keys()):
