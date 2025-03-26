@@ -40,6 +40,12 @@ jobs:
           aws s3 cp all-tests.json \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/all-tests.json || true
 
+      - name: Upload ignored_test_classes.txt to S3
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp ignored_test_classes.txt \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/ignored_test_classes.txt || true
+
  # ===================== TESTBATCH: ACTUATOR =====================
       
       - name: Run Actuator Tests with Signal Trap
