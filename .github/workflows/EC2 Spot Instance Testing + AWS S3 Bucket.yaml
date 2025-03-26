@@ -79,6 +79,12 @@ jobs:
           aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
           aws s3 cp spring-boot-project/spring-boot-actuator/build/test-results/test \
             "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/actuator/" --recursive || true
+
+
+          echo "Suche nach leeren XML-Dateien (ohne <testcase>):"
+          find spring-boot-project/spring-boot-actuator/build/test-results/test -name "*.xml" | while read file; do
+            grep -q "<testcase" "$file" || echo "LEER: $file"
+          done
           EOF
 
           chmod +x run_actuator.sh
