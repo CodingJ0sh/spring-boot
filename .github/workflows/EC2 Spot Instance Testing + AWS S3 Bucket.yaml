@@ -60,6 +60,7 @@ jobs:
           trap '{
             echo "Abbruch in $CURRENT_BATCH" >> "$CHECKPOINT_FILE"
             python3 junit_result_list.py || echo "JUnit-Auswertung fehlgeschlagen"
+            aws s3 cp executed-classes.json "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/executed-classes.json" || true
             aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
             aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
             aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
@@ -100,6 +101,7 @@ jobs:
           cat > run_autoconfigure.sh <<'EOF'
           #!/bin/bash
           set -e
+          
           CHECKPOINT_FILE="checkpoint_autoconfigure.log"
           CURRENT_BATCH="autoconfigure"
           CONSOLE_LOG="gradle_console_autoconfigure.log"
@@ -110,12 +112,12 @@ jobs:
           trap '{
             echo "Abbruch in $CURRENT_BATCH" >> "$CHECKPOINT_FILE"
             python3 junit_result_list.py || echo "JUnit-Auswertung fehlgeschlagen"
+            aws s3 cp executed-classes.json "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/executed-classes.json" || true
             aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
             aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
             aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
             aws s3 cp spring-boot-project/spring-boot-autoconfigure/build/test-results/test \
               "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/autoconfigure/" --recursive || true
-            aws s3 cp executed-classes.json "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/executed-classes.json" || true
             exit 1;
           }' SIGTERM SIGINT SIGHUP SIGQUIT
 
@@ -158,9 +160,9 @@ jobs:
           aws s3 cp test-summary.json \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary.json || true
 
-      - name: Upload executed_classes.json to S3
+      - name: Upload executed-classes.json to S3
         if: always()
         run: |
           RUN_ID=${{ github.run_id }}
-          aws s3 cp executed_classes.json \
-            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed_classes.json || true
+          aws s3 cp executed-classes.json \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed-classes.json || true
