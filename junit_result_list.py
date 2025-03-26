@@ -96,4 +96,20 @@ for module in sorted(summary.keys()):
 with open(OUTPUT_FILE, "w") as f:
     json.dump(ordered, f, indent=2)
 
+
+# ...Erfolgreiche Klassen schreiben---
+executed_classes = set()
+
+for module in summary:
+    if module == "Overview":
+        continue
+    for cls in summary[module].get("BESTANDEN", {}):
+        executed_classes.add(cls)
+
+with open("executed_classes.log", "w") as f:
+    for cls in sorted(executed_classes):
+        f.write(cls + "\n")
+
+print("Erfolgreich getestete Klassen in executed_classes.log gespeichert.")
+
 print(f"Testzusammenfassung geschrieben nach {OUTPUT_FILE}")
