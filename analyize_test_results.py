@@ -1,66 +1,70 @@
 import os
 import xml.etree.ElementTree as ET
-from collections import defaultdict
+from collections import defaultdict, Counter
 
+# Orte mit Test-XML-Dateien
 RESULTS_DIRS = {
     "actuator": "spring-boot-project/spring-boot-actuator/build/test-results/test",
     "autoconfigure": "spring-boot-project/spring-boot-autoconfigure/build/test-results/test"
 }
 
-all_test_classes = defaultdict(list)
 empty_files = []
-error_files = []
+invalid_files = []
+class_counter = Counter()
 
-print("🔍 Starte XML-Analyse...\n")
+print("Analyse der Test-Resultate...\n")
 
-for batch, path in RESULTS_DIRS.items():
-    print(f"📁 Analysiere Batch: {batch}")
-    if not os.path.exists(path):
-        print(f"Ordner nicht gefunden: {path}\n")
+for batch, dir_path in RESULTS_DIRS.items():
+    print(f"🔍 Scanne Batch '{batch}' ({dir_path})...")
+    if not os.path.exists(dir_path):
+        print(f"Verzeichnis existiert nicht: {dir_path}\n")
         continue
 
-    for file in os.listdir(path):
-        if not file.endswith(".xml"):
+    for filename in os.listdir(dir_path):
+        if not filename.endswith(".xml"):
             continue
 
-        full_path = os.path.join(path, file)
+        full_path = os.path.join(dir_path, filename)
+
         try:
             tree = ET.parse(full_path)
             root = tree.getroot()
             testcases = root.findall(".//testcase")
 
             if not testcases:
-                empty_files.append((batch, file))
-                continue
-
-            for case in testcases:
-                classname = case.attrib.get("classname")
-                if classname:
-                    all_test_classes[classname].append((batch, file))
+                empty_files.append(full_path)
+            else:
+                for case in testcases:
+                    classname = case.attrib.get("classname")
+                    if classname:
+                        class_counter[classname] += 1
 
         except ET.ParseError:
-            error_files.append((batch, file))
+            invalid_files.append(full_path)
 
-print("\n📊 Ergebnis:")
-
-print(f"\n🆗 Gesamtzahl unterschiedlicher Testklassen: {len(all_test_classes)}")
-print(f"🧾 Gesamtzahl Testklasse-Zuordnungen (inkl. Mehrfachzuordnung): {sum(len(v) for v in all_test_classes.values())}")
-
-# Doppelt gelaufene Klassen
-duplicates = {cls: files for cls, files in all_test_classes.items() if len(files) > 1}
-
-print(f"\nTestklassen mehrfach ausgeführt: {len(duplicates)}")
-for cls, uses in list(duplicates.items())[:10]:  # nur erste 10
-    print(f" - {cls} ({len(uses)}x): {[f'{b}/{f}' for b, f in uses]}")
-
-# Leere Dateien
+# Ausgabe leere Dateien
+print("\n📁 Leere XML-Dateien (ohne <testcase>):")
 if empty_files:
-    print(f"\nLeere XML-Dateien (ohne <testcase>): {len(empty_files)}")
-    for batch, file in empty_files:
-        print(f" - {batch}/{file}")
+    for path in empty_files:
+        print(f"  - {path}")
+else:
+    print("Keine leeren XML-Dateien gefunden.")
 
-# Fehlerhafte Dateien
-if error_files:
-    print(f"\nFehlerhafte XML-Dateien: {len(error_files)}")
-    for batch, file in error_files:
-        print(f" - {batch}/{file}")
+# Ausgabe unlesbare Dateien
+print("Ungültige/kaputte XML-Dateien:")
+if invalid_files:
+    for path in invalid_files:
+        print(f"  - {path}")
+else:
+    print("Keine kaputten XML-Dateien gefunden.")
+
+# Mehrfach ausgeführte Klassen
+print("Doppelt oder mehrfach ausgeführte Testklassen:")
+duplicates = {cls: count for cls, count in class_counter.items() if count > 1}
+if duplicates:
+    for cls, count in duplicates.items():
+        print(f"  - {cls}: {count}x")
+else:
+    print("Keine doppelten Testklassen.")
+
+print("Analyse abgeschlossen.")
