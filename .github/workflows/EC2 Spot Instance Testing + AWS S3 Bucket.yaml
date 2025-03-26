@@ -3,7 +3,7 @@ name: EC2 Spot Instance Testing + AWS S3 Bucket
 env:
   ACTIONS_RUNNER_DEBUG: true
   ACTIONS_STEP_DEBUG: true
-  SIMULATE_SIGTERM: false
+  SIMULATE_SIGTERM: true
   
 on:
   push:
