@@ -149,9 +149,17 @@ jobs:
         if: always()
         run: |
           python3 junit_result_list.py
+          
       - name: Upload test-summary.json to S3
         if: always()
         run: |
           RUN_ID=${{ github.run_id }}
           aws s3 cp test-summary.json \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary.json || true
+
+      - name: Upload executed_classes.log to S3
+        if: always()
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp executed_classes.log \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed_classes.log || true
