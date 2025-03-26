@@ -63,7 +63,7 @@ for batch, base_dir in BATCHES.items():
 
                 test_class_list[batch].append(full_classname)
                 testclass_counter += 1
-                testmethod_counter += len(methods)
+                testmethod_counter += len(active_methods)
 
     overview[batch] = {
         "#Testklassen": testclass_counter,
