@@ -180,4 +180,3 @@ jobs:
           RUN_ID=${{ github.run_id }}
           aws s3 cp test_xml_analysis.txt \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test_xml_analysis.txt || true
-        working-directory: ${{ github.workspace }}
