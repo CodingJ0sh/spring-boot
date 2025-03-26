@@ -115,6 +115,7 @@ jobs:
             aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
             aws s3 cp spring-boot-project/spring-boot-autoconfigure/build/test-results/test \
               "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/autoconfigure/" --recursive || true
+            aws s3 cp executed-classes.json "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/executed-classes.json" || true
             exit 1;
           }' SIGTERM SIGINT SIGHUP SIGQUIT
 
@@ -157,9 +158,9 @@ jobs:
           aws s3 cp test-summary.json \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary.json || true
 
-      - name: Upload executed_classes.log to S3
+      - name: Upload executed_classes.json to S3
         if: always()
         run: |
           RUN_ID=${{ github.run_id }}
-          aws s3 cp executed_classes.log \
-            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed_classes.log || true
+          aws s3 cp executed_classes.json \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed_classes.json || true
