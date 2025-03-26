@@ -1,0 +1,157 @@
+name: EC2 Spot Instance Testing + AWS S3 Bucket
+
+env:
+  ACTIONS_RUNNER_DEBUG: true
+  ACTIONS_STEP_DEBUG: true
+  SIMULATE_SIGTERM: false
+  
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Check user in workflow
+        run: id
+
+      - name: Docker Info
+        run: docker info
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Save All Test Candidates
+        run: python3 save_all_tests.py
+
+      - name: Upload all-tests.json to S3
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp all-tests.json \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/all-tests.json || true
+
+ # ===================== TESTBATCH: ACTUATOR =====================
+      
+      - name: Run Actuator Tests with Signal Trap
+        run: |
+          cat > run_actuator.sh <<'EOF'
+          #!/bin/bash
+          set -e
+      
+          CHECKPOINT_FILE="checkpoint_actuator.log"
+          CURRENT_BATCH="actuator"
+          CONSOLE_LOG="gradle_console_actuator.log"
+          S3_BUCKET="s3://my-ec2-spot-log-bucket/checkpoints"
+          TEST_RESULTS_JSON="test-summary.json"
+          
+          exec > >(tee -i "$CONSOLE_LOG")
+          exec 2>&1
+
+          trap '{
+            echo "Abbruch in $CURRENT_BATCH" >> "$CHECKPOINT_FILE"
+            python3 junit_result_list.py || echo "JUnit-Auswertung fehlgeschlagen"
+            aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
+            aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
+            aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
+            aws s3 cp spring-boot-project/spring-boot-actuator/build/test-results/test \
+              "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/actuator/" --recursive || true
+            exit 1;
+          }' SIGTERM SIGINT SIGHUP SIGQUIT
+
+          echo "Starte Batch: $CURRENT_BATCH" > "$CHECKPOINT_FILE"
+          ./gradlew :spring-boot-project:spring-boot-actuator:clean \
+                    :spring-boot-project:spring-boot-actuator:build
+
+          python3 junit_result_list.py
+          aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
+          aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
+          aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
+          aws s3 cp spring-boot-project/spring-boot-actuator/build/test-results/test \
+            "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/actuator/" --recursive || true
+          EOF
+
+          chmod +x run_actuator.sh
+          ./run_actuator.sh
+
+
+          ########################
+          ##! ACHTUNG--ACHTUNG !##
+          #######################ä
+
+          if [ "$SIMULATE_SIGTERM" = "true" ]; then
+            echo "### SIMULIERE SIGTERM ###"
+            kill -s SIGTERM $$
+          fi
+
+ # ===================== TESTBATCH: AUTOCONFIGURE =====================
+ 
+      - name: Run Autoconfigure Tests with Signal Trap
+        run: |
+          cat > run_autoconfigure.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          CHECKPOINT_FILE="checkpoint_autoconfigure.log"
+          CURRENT_BATCH="autoconfigure"
+          CONSOLE_LOG="gradle_console_autoconfigure.log"
+          TEST_RESULTS_JSON="test-summary.json"
+          exec > >(tee -i "$CONSOLE_LOG")
+          exec 2>&1
+
+          trap '{
+            echo "Abbruch in $CURRENT_BATCH" >> "$CHECKPOINT_FILE"
+            python3 junit_result_list.py || echo "JUnit-Auswertung fehlgeschlagen"
+            aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
+            aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
+            aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
+            aws s3 cp spring-boot-project/spring-boot-autoconfigure/build/test-results/test \
+              "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/autoconfigure/" --recursive || true
+            exit 1;
+          }' SIGTERM SIGINT SIGHUP SIGQUIT
+
+          echo "Starte Batch: $CURRENT_BATCH" > "$CHECKPOINT_FILE"
+          ./gradlew :spring-boot-project:spring-boot-autoconfigure:clean \
+                    :spring-boot-project:spring-boot-autoconfigure:build
+
+          python3 junit_result_list.py
+          aws s3 cp "$CHECKPOINT_FILE" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/checkpoint_$CURRENT_BATCH.log" || true
+          aws s3 cp "$CONSOLE_LOG" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/gradle_console_$CURRENT_BATCH.log" || true
+          aws s3 cp "$TEST_RESULTS_JSON" "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-summary.json" || true
+          aws s3 cp spring-boot-project/spring-boot-autoconfigure/build/test-results/test \
+            "s3://my-ec2-spot-log-bucket/checkpoints/$GITHUB_RUN_ID/test-results/autoconfigure/" --recursive || true
+          EOF
+
+          chmod +x run_autoconfigure.sh
+          ./run_autoconfigure.sh
+
+      # === Runner Debug Logs (optional) ===
+      
+      - name: Upload Runner-Debug-Logs
+        if: always()
+        run: |
+          RUN_ID=${{ github.run_id }}
+          BASE_PATH="checkpoints/$RUN_ID"
+          aws s3 cp ~/actions-runner/_diag \
+            s3://my-ec2-spot-log-bucket/$BASE_PATH/diag/ --recursive || true
+          
+
+      # === Zusammenfassen der JUnit-Ergebnisse ===
+      - name: Generate Test Summary
+        if: always()
+        run: |
+          python3 junit_result_list.py
+      - name: Upload test-summary.json to S3
+        if: always()
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp test-summary.json \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary.json || true
