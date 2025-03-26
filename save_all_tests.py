@@ -11,10 +11,16 @@ TEST_DIRS = {
     "spring-boot-autoconfigure": "spring-boot-project/spring-boot-autoconfigure/src/test/java"
 }
 
-# Regex zum Finden von Testmethoden
+# Regex: alle Methoden mit JUnit-Annotation erkennen
 test_method_pattern = re.compile(
     r'(@(?:Test|ParameterizedTest|RepeatedTest|TestTemplate|TestFactory)[^\n]*\n(?:@\w+[^\n]*\n)*)'
     r'\s*(?:public|protected|private)?\s+\w[\w<>]*\s+(\w+)\s*\(',
+    re.MULTILINE
+)
+
+# Regex: alle Klassen (inkl. innerer) erfassen
+class_pattern = re.compile(
+    r'(class|static class)\s+(\w+)[^{]*\{',
     re.MULTILINE
 )
 
@@ -30,30 +36,39 @@ for module, base_dir in TEST_DIRS.items():
 
                 with open(class_path, "r", encoding="utf-8") as f:
                     content = f.read()
-                    
-                matches = test_method_pattern.findall(content)
-                
-                methods = []
-                for annotations, method in matches:
-                    if annotations and "@Disabled" in annotations:
+
+                # Suche nach allen Klassen
+                class_matches = class_pattern.finditer(content)
+
+                for match in class_matches:
+                    class_type, classname = match.groups()
+                    # Versuche, Methoden im Bereich nach der Klassendeklaration zu finden
+                    class_body = content[match.end():]
+                    method_matches = test_method_pattern.findall(class_body)
+
+                    methods = [
+                        method for annotations, method in method_matches
+                        if "@Disabled" not in annotations
+                    ]
+
+                    if not methods:
                         continue
-                    methods.append(method)
 
-                if not methods:
-                    continue
+                    # Erzeuge vollqualifizierten Klassennamen
+                    rel_path = os.path.relpath(class_path, base_dir)
+                    base_class = rel_path.replace(os.sep, ".").replace(".java", "")
+                    full_classname = base_class + "$" + classname if classname != base_class else base_class
 
-                rel_path = os.path.relpath(class_path, base_dir)
-                full_classname = rel_path.replace(os.sep, ".").replace(".java", "")
-
-                all_tests[module][full_classname] = methods
-                testclass_counter += 1
-                testmethod_counter += len(methods)
+                    all_tests[module][full_classname] = methods
+                    testclass_counter += 1
+                    testmethod_counter += len(methods)
 
     overview[module] = {
         "#Testklassen": testclass_counter,
         "#Testmethoden": testmethod_counter
     }
 
+# Ausgabe erzeugen
 ordered = OrderedDict()
 ordered["Overview"] = overview
 for module in sorted(all_tests.keys()):
