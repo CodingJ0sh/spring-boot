@@ -15,7 +15,6 @@ ALL_TESTS_FILE = "all-tests.json"
 summary = {}
 executed_tests = {}
 
-# --- Ergebnisstruktur initialisieren ---
 def init_module_summary(module):
     if module not in summary:
         summary[module] = {
@@ -25,14 +24,13 @@ def init_module_summary(module):
             "NICHT_GELAUFEN": {}
         }
 
-# --- Tests einsortieren ---
 def add_test(module, result_type, classname, testname):
     init_module_summary(module)
     if classname not in summary[module][result_type]:
         summary[module][result_type][classname] = []
     summary[module][result_type][classname].append(testname)
 
-# --- JUnit XML Ergebnisse einlesen ---
+# --- XML-Ergebnisse sammeln ---
 for module, dir_path in RESULTS_DIRS.items():
     executed_tests[module] = set()
 
@@ -62,11 +60,11 @@ for module, dir_path in RESULTS_DIRS.items():
             else:
                 add_test(module, "BESTANDEN", classname, testname)
 
-# --- Vollständige Testliste laden ---
+# --- Vollständige Liste laden ---
 with open(ALL_TESTS_FILE) as f:
     all_tests = json.load(f)
 
-# --- Fehlende Tests (nicht gelaufen) ---
+# --- "NICHT_GELAUFEN" ermitteln ---
 for module, classes in all_tests.items():
     if module == "Overview":
         continue
@@ -89,7 +87,7 @@ for module in summary:
         "NICHT_GELAUFEN": sum(len(v) for v in summary[module].get("NICHT_GELAUFEN", {}).values())
     }
 
-# --- Finales JSON schreiben ---
+# --- Output ---
 ordered = OrderedDict()
 ordered["Overview"] = overview
 for module in sorted(summary.keys()):
