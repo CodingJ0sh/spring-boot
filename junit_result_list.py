@@ -56,6 +56,8 @@ for module, path in RESULTS_DIRS.items():
             else:
                 add_test(module, "BESTANDEN", classname, testname)
 
+with open(ALL_TESTS_FILE) as f:
+    all_tests = json.load(f)
 
 # Übersicht erzeugen
 overview = {}
