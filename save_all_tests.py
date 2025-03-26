@@ -11,6 +11,7 @@ BATCHES = {
 
 test_class_list = OrderedDict()
 overview = {}
+ignored_classes = []
 
 # Regex für JUnit-Testmethoden
 test_method_pattern = re.compile(
@@ -45,18 +46,20 @@ for batch, base_dir in BATCHES.items():
                 class_body = content[match.end():]
                 method_matches = test_method_pattern.findall(class_body)
 
-                methods = [
-                    method for annotations, method in method_matches
-                    if "@Disabled" not in annotations
-                ]
-
-                if not methods:
-                    continue
+                all_methods = [method for _, method in method_matches]
+                active_methods = [method for annotations, method in method_matches if "@Disabled" not in annotations]
 
                 rel_path = os.path.relpath(class_path, base_dir)
                 base_class = rel_path.replace(os.sep, ".").replace(".java", "")
                 class_name = match.group(2)
                 full_classname = f"{base_class}${class_name}" if class_name != base_class else base_class
+
+                if not method_matches:
+                    ignored_classes.append(f"{full_classname} – keine Testmethoden")
+                    continue
+                if not active_methods:
+                    ignored_classes.append(f"{full_classname} – alle Methoden @Disabled")
+                    continue
 
                 test_class_list[batch].append(full_classname)
                 testclass_counter += 1
@@ -74,5 +77,13 @@ output.update(test_class_list)
 
 with open("all-tests.json", "w") as out:
     json.dump(output, out, indent=2)
+
+with open("ignored_test_classes.txt", "w", encoding="utf-8") as out:
+    if ignored_classes:
+        out.write("Ignorierte Testklassen:\n")
+        for cls in ignored_classes:
+            out.write(f"- {cls}\n")
+    else:
+        out.write("Keine ignorierten Testklassen gefunden.\n")
 
 print("Tests nach Batch gruppiert gespeichert in all-tests.json")
