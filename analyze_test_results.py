@@ -15,7 +15,7 @@ class_counter = Counter()
 print("Analyse der Test-Resultate...\n")
 
 for batch, dir_path in RESULTS_DIRS.items():
-    print(f"🔍 Scanne Batch '{batch}' ({dir_path})...")
+    print("Scanne Batch '{batch}' ({dir_path})...")
     if not os.path.exists(dir_path):
         print(f"Verzeichnis existiert nicht: {dir_path}\n")
         continue
@@ -43,7 +43,7 @@ for batch, dir_path in RESULTS_DIRS.items():
             invalid_files.append(full_path)
 
 # Ausgabe leere Dateien
-print("\n📁 Leere XML-Dateien (ohne <testcase>):")
+print("Leere XML-Dateien (ohne <testcase>):")
 if empty_files:
     for path in empty_files:
         print(f"  - {path}")
@@ -67,4 +67,26 @@ if duplicates:
 else:
     print("Keine doppelten Testklassen.")
 
-print("Analyse abgeschlossen.")
+with open("test_xml_analysis.txt", "w", encoding="utf-8") as f:
+    f.write("📁 Leere XML-Dateien (ohne <testcase>):\n")
+    if empty_files:
+        for path in empty_files:
+            f.write(f"  - {path}\n")
+    else:
+        f.write("Keine leeren XML-Dateien gefunden.\n")
+
+    f.write("\nUngültige/kaputte XML-Dateien:\n")
+    if invalid_files:
+        for path in invalid_files:
+            f.write(f"  - {path}\n")
+    else:
+        f.write("Keine kaputten XML-Dateien gefunden.\n")
+
+    f.write("\nDoppelt oder mehrfach ausgeführte Testklassen:\n")
+    if duplicates:
+        for cls, count in duplicates.items():
+            f.write(f"  - {cls}: {count}x\n")
+    else:
+        f.write("Keine doppelten Testklassen.\n")
+
+    f.write("\nAnalyse abgeschlossen.\n")
