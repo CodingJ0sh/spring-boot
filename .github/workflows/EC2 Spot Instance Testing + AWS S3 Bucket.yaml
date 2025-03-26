@@ -173,15 +173,10 @@ jobs:
           aws s3 cp executed-classes.json \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed-classes.json || true
 
-      - name: Analyse Test-Result-XMLs
+      - name: Analyse Test XMLs auf Duplikate und Leerstellen
         if: always()
         run: |
-          python3 analyze_test_results.py
-          
-      - name: Upload Analyse-Log zu S3
-        if: always()
-        run: |
+          python3 ./analyze_test_results.py
           RUN_ID=${{ github.run_id }}
-          python3 analyze_test_results.py > analyze_log.txt || true
-          aws s3 cp analyze_log.txt \
-            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/analyze_log.txt || true
+          aws s3 cp test_xml_analysis.txt \
+            s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test_xml_analysis.txt || true
