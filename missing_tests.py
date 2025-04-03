@@ -2,7 +2,7 @@ import json
 
 ALL_TESTS_FILE = "all-tests.json"
 EXECUTED_CLASSES_FILE = "executed-classes.json"
-OUTPUT_MISSING = "missing-classes.txt"
+OUTPUT_JSON = "remaining-tests.json"
 
 with open(ALL_TESTS_FILE) as f:
     all_tests = json.load(f)
@@ -17,10 +17,9 @@ for batch, classes in all_tests.items():
         continue
     for class_name in classes:
         if class_name not in executed.get(batch, []):
-            missing.append(class_name)
+            missing.setdefault(batch, []).append(class_name)
 
-with open(OUTPUT_MISSING, "w") as f:
-    for classname in sorted(missing):
-        f.write(classname + "\n")
+with open(OUTPUT_JSON, "w") as f:
+    json.dump(missing, f, indent=2)
 
-print(f"{len(missing)} fehlende Klassen erkannt und gespeichert in {OUTPUT_MISSING}")
+print(f"{sum(len(v) for v in missing.values())} fehlende Klassen erkannt und gespeichert in '{OUTPUT_JSON}'")
