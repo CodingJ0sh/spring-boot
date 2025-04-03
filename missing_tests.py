@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 
 ALL_TESTS_FILE = "all-tests.json"
 EXECUTED_CLASSES_FILE = "executed-classes.json"
@@ -10,7 +11,7 @@ with open(ALL_TESTS_FILE) as f:
 with open(EXECUTED_CLASSES_FILE) as f:
     executed = json.load(f)
 
-missing = []
+missing = defaultdict(list)
 
 for batch, classes in all_tests.items():
     if batch == "Overview":
