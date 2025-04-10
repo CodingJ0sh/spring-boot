@@ -5,6 +5,7 @@ on:
 
 env:
   AWS_REGION: eu-central-1
+  BUCKET_NAME: my-ec2-spot-log-bucket
 
 jobs:
   retry-tests:
@@ -20,41 +21,59 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install AWS CLI (falls nötig)
+      - name: Install AWS CLI if needed
         run: |
           which aws || sudo apt-get install -y awscli
 
+      - name: Get latest checkpoint prefix from S3
+        id: checkpoint
+        run: |
+          echo "Ermittle den neusten S3-Checkpoint im Bucket: $BUCKET_NAME"
+          aws s3 ls s3://$BUCKET_NAME/checkpoints/
+          latest_run_id=$(aws s3 ls s3://$BUCKET_NAME/checkpoints/ | awk '{print $2}' | sort -r | head -n1 | sed 's#/##')
+          echo "Neuster RUN_ID: $latest_run_id"
+          echo "run_id=$latest_run_id" >> "$GITHUB_OUTPUT"
+
       - name: Download remaining-tests.txt from S3
         run: |
-          RUN_ID=${{ github.run_id }}
-          aws s3 cp s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/remaining-tests.txt remaining-tests.txt || true
+          RUN_ID=${{ steps.checkpoint.outputs.run_id }}
+          echo "Lade remaining-tests.txt von: s3://$BUCKET_NAME/checkpoints/$RUN_ID/"
+          aws s3 cp s3://$BUCKET_NAME/checkpoints/$RUN_ID/remaining-tests.txt remaining-tests.txt || true
+          echo "Inhalt von remaining-tests.txt:"
+          cat remaining-tests.txt || echo "(Datei leer oder nicht gefunden)"
 
       - name: Run Missing Tests
         run: |
-          echo "Starte Wiederholungslauf..."
-          
+          echo "🔁 Starte Wiederholungslauf..."
+
           if [ ! -f remaining-tests.txt ]; then
-            echo "remaining-tests.txt nicht gefunden!"
+            echo "emaining-tests.txt nicht gefunden!"
             exit 1
           fi
 
           mapfile -t classes < remaining-tests.txt
 
           if [ ${#classes[@]} -eq 0 ]; then
-            echo "Keine fehlenden Tests mehr vorhanden."
+            echo "Keine fehlenden Tests mehr vorhanden..."
             exit 0
           fi
 
-          test_filter=$(IFS=, ; echo "${classes[*]}")
+          echo "${#classes[@]} Testklassen werden erneut ausgeführt:"
+          for cls in "${classes[@]}"; do
+            echo " - $cls"
+          done
 
-          echo "Wiederhole ${#classes[@]} Klassen..."
+          test_filter=$(IFS=, ; echo "${classes[*]}")
+          echo "Gradle Test-Filter: $test_filter"
+
           ./gradlew test --continue --tests "$test_filter"
 
-      - name: JUnit-Analyse
+      - name: JUnit-Auswertung
         run: python3 junit_result_list.py
 
       - name: Upload neue Testergebnisse
         run: |
-          RUN_ID=${{ github.run_id }}
-          aws s3 cp test-summary.json s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary-retry.json || true
-          aws s3 cp executed-classes.json s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed-classes-retry.json || true
+          RUN_ID=${{ steps.checkpoint.outputs.run_id }}
+          echo " Lade Ergebnisse in S3 hoch (Checkpoint: $RUN_ID)"
+          aws s3 cp test-summary.json s3://$BUCKET_NAME/checkpoints/$RUN_ID/test-summary-retry.json || true
+          aws s3 cp executed-classes.json s3://$BUCKET_NAME/checkpoints/$RUN_ID/executed-classes-retry.json || true
