@@ -66,7 +66,7 @@ jobs:
           test_filter=$(IFS=, ; echo "${classes[*]}")
           echo "Gradle Test-Filter: $test_filter"
 
-          ./gradlew test --continue --tests "$test_filter"
+          ./gradlew test --continue --tests "$test_filter" --stacktrace
 
       - name: JUnit-Auswertung
         run: python3 junit_result_list.py
