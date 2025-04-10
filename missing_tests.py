@@ -24,3 +24,13 @@ with open(OUTPUT_JSON, "w") as f:
     json.dump(missing, f, indent=2)
 
 print(f"{sum(len(v) for v in missing.values())} fehlende Klassen erkannt und gespeichert in '{OUTPUT_JSON}'")
+
+# Optional: Flache Liste aller verbleibenden Klassen speichern
+all_remaining_classes = []
+
+for batch, classes in remaining.items():
+    all_remaining_classes.extend(classes)
+
+with open("remaining-tests.txt", "w") as out:
+    for classname in sorted(all_remaining_classes):
+        out.write(classname + "\n")
