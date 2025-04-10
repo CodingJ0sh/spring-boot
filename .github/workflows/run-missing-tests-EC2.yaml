@@ -1,0 +1,60 @@
+name: Re-run missing testclasses
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  retry-tests:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install AWS CLI (falls nötig)
+        run: |
+          which aws || sudo apt-get install -y awscli
+
+      - name: Download remaining-tests.txt from S3
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/remaining-tests.txt remaining-tests.txt || true
+
+      - name: Run Missing Tests
+        run: |
+          echo "Starte Wiederholungslauf..."
+          
+          if [ ! -f remaining-tests.txt ]; then
+            echo "remaining-tests.txt nicht gefunden!"
+            exit 1
+          fi
+
+          mapfile -t classes < remaining-tests.txt
+
+          if [ ${#classes[@]} -eq 0 ]; then
+            echo "Keine fehlenden Tests mehr vorhanden."
+            exit 0
+          fi
+
+          test_filter=$(IFS=, ; echo "${classes[*]}")
+
+          echo "Wiederhole ${#classes[@]} Klassen..."
+          ./gradlew test --continue --tests "$test_filter"
+
+      - name: JUnit-Analyse
+        run: python3 junit_result_list.py
+
+      - name: Upload neue Testergebnisse
+        run: |
+          RUN_ID=${{ github.run_id }}
+          aws s3 cp test-summary.json s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/test-summary-retry.json || true
+          aws s3 cp executed-classes.json s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/executed-classes-retry.json || true
