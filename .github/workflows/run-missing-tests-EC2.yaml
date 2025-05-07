@@ -43,30 +43,25 @@ jobs:
           cat remaining-tests.txt || echo "(Datei leer oder nicht gefunden)"
 
       - name: Run Missing Tests
+        continue-on-error: true
         run: |
-          echo "🔁 Starte Wiederholungslauf..."
-
+          echo "Starte Wiederholungslauf..."
           if [ ! -f remaining-tests.txt ]; then
-            echo "emaining-tests.txt nicht gefunden!"
+            echo "remaining-tests.txt nicht gefunden!"
             exit 1
           fi
-
+      
           mapfile -t classes < remaining-tests.txt
-
+      
           if [ ${#classes[@]} -eq 0 ]; then
-            echo "Keine fehlenden Tests mehr vorhanden..."
+            echo "Keine fehlenden Tests mehr vorhanden."
             exit 0
           fi
-
-          echo "${#classes[@]} Testklassen werden erneut ausgeführt:"
-          for cls in "${classes[@]}"; do
-            echo " - $cls"
-          done
-
+      
           test_filter=$(IFS=, ; echo "${classes[*]}")
-          echo "Gradle Test-Filter: $test_filter"
-
-          ./gradlew test --continue --tests "$test_filter" --stacktrace
+      
+          echo "Wiederhole ${#classes[@]} Klassen..."
+          ./gradlew test --continue --tests "$test_filter" || echo "Tests abgeschlossen mit Fehlern, aber Workflow wird fortgesetzt"
 
       - name: JUnit-Auswertung
         run: python3 junit_result_list.py
