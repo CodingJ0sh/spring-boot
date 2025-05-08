@@ -63,8 +63,8 @@ jobs:
           echo "Wiederhole ${#classes[@]} Klassen..."
           ./gradlew test --continue --tests "$test_filter" || echo "Tests abgeschlossen mit Fehlern, aber Workflow wird fortgesetzt"
 
-      - name: JUnit-Auswertung
-        run: python3 junit_result_list.py
+    # - name: JUnit-Auswertung
+    #  run: python3 junit_result_list.py
 
       - name: Upload neue Testergebnisse
         run: |
