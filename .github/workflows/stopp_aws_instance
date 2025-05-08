@@ -1,0 +1,27 @@
+name: Simulate EC2 Instance Stop
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stop_instance:
+    runs-on: self-hosted  # Läuft auf dem EC2 GitHub Runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: AWS CLI Version prüfen
+        run: aws --version
+
+      - name: Hole Instanz-ID der laufenden Instanz
+        id: get_instance_id
+        run: |
+          INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+          echo "INSTANCE_ID=${INSTANCE_ID}" >> $GITHUB_ENV
+          echo "Gefundene Instanz-ID: $INSTANCE_ID"
+
+      - name: Stoppe EC2 Instanz
+        run: |
+          echo "Stoppe EC2-Instanz: ${{ env.INSTANCE_ID }}"
+          aws ec2 stop-instances --instance-ids ${{ env.INSTANCE_ID }}
