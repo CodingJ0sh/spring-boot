@@ -196,3 +196,11 @@ jobs:
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/remaining-tests.json || true
           aws s3 cp remaining-tests.txt \
             s3://my-ec2-spot-log-bucket/checkpoints/$RUN_ID/remaining-tests.txt || true
+
+      - name: Trigger Error Workflow on Failure
+        if: failure()
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: error-event
