@@ -1,1 +1,15 @@
+name: AWS Lambda Trigger Test
 
+on:
+  workflow_dispatch:
+
+jobs:
+  test_job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Echo Test
+        run: echo "Lambda hat den GitHub Workflow erfolgreich gestartet! JUHUUUUUUUUUU"
