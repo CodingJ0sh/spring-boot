@@ -1,7 +1,7 @@
-name: Simulate EC2 Instance Stop
+name: Stop EC2 Instance by Name
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Manuelles Auslösen
 
 jobs:
   stop_instance:
@@ -14,14 +14,19 @@ jobs:
       - name: AWS CLI Version prüfen
         run: aws --version
 
-      - name: Hole Instanz-ID der laufenden Instanz
-        id: get_instance_id
+      - name: Hole Instanz-ID basierend auf dem Namen
+        id: get_instance_id_by_name
         run: |
-          INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+          INSTANCE_NAME="EC2_Testing_1.2"
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=$INSTANCE_NAME" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text)
+          
           echo "INSTANCE_ID=${INSTANCE_ID}" >> $GITHUB_ENV
           echo "Gefundene Instanz-ID: $INSTANCE_ID"
 
       - name: Stoppe EC2 Instanz
         run: |
-          echo "Stoppe EC2-Instanz: ${{ env.INSTANCE_ID }}"
+          echo "Stoppe EC2-Instanz mit ID: ${{ env.INSTANCE_ID }}"
           aws ec2 stop-instances --instance-ids ${{ env.INSTANCE_ID }}
